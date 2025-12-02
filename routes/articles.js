@@ -1,9 +1,79 @@
-import express from "express";
+import { Router } from "express";
 import { prisma } from "../prisma/prisma.js";
-import res from "express/lib/response.js";
 import { validateArticleInfo } from "../middlewares/validator.js";
 import { BadRequestError, NotFoundError } from "../utils/CustomError.js";
-const router = express.Router();
+import { ArticleComment } from "./comments.js";
+const articleRouter = new Router();
+const articleCommentRouter = new Router({ mergeParams: true });
+//쉬운 기능부터 구현하면서 차근차근
+//< 댓글 >
+//   - 댓글 등록 API를 만들어 주세요.
+// /articles/:id/comments/ POST
+// /products/:id/comments/ POST
+// 	     > content를 입력하여 댓글을 등록합니다.
+// 	     > 중고마켓, 자유게시판 댓글 등록 API를 따로 만들어 주세요.
+articleCommentRouter.post("/", async (req, res) => {
+   const { content } = req.body;
+
+   const created = await prisma.article_comment.create({
+      data: {
+         content,
+         article_id: req.params.articleId,
+      },
+   });
+   const articleComment = ArticleComment.fromEntity(created);
+   res.json(articleComment);
+});
+
+//   - 댓글 수정 API를 만들어 주세요.
+// /articles/:articleid/comments/:commnetId PATCH
+// /products/:productid/comments/:commnetId PATCH
+// 	     > PATCH 메서드를 사용해 주세요.
+articleCommentRouter.patch("/:commentId", async (req, res) => {
+   const { content } = req.body;
+
+   const updated = await prisma.article_comment.update({
+      where: {
+         id: req.params.commentId,
+      },
+      data: {
+         content,
+         article_id: req.params.articleId,
+      },
+   });
+   const articleComment = ArticleComment.fromEntity(updated);
+   res.json(articleComment);
+});
+
+//   - 댓글 삭제 API를 만들어 주세요.
+// /articles/:articleid/comments/:commnetId DELETE
+// /products/:productid/comments/:commnetId DELETE
+articleCommentRouter.delete("/:commentId", (req, res) =>
+   prisma.article_comment
+      .delete({
+         where: {
+            id: req.params.commentId,
+         },
+      })
+      .then(ArticleComment.fromEntity)
+      .then((comment) => res.json(comment))
+);
+//   - 댓글 목록 조회 API를 만들어 주세요.
+// /articles/:id/comments/ 형식
+// /products/:id/comments/ 형식
+// 	     > id, content, createdAt 를 조회합니다.
+// 	     > cursor 방식의 페이지네이션 기능을 포함해 주세요.
+// 	     > 중고마켓, 자유게시판 댓글 목록 조회 API를 따로 만들어 주세요.
+articleCommentRouter.get("/", async (req, res) => {
+   const entities = await prisma.article_comment.findMany({
+      where: {
+         article_id: req.params.articleId,
+      },
+   });
+   const articleComments = entities.map(ArticleComment.fromEntity);
+   res.json(articleComments);
+});
+articleRouter.use("/:articleId/comments", articleCommentRouter);
 
 class Article {
    constructor(id, title, content, createdAt) {
@@ -15,19 +85,11 @@ class Article {
 
    static fromEntity(entity) {
       // entity는 쌩 오브젝트 => 클래스 소속으로 만들어줘야 함
+      // 그냥 아는거 다줘. DB 읽기 // result는 entities
       return new Article(entity.id.toString(), entity.title, entity.content, entity.created_at);
    }
 }
-// 게시글 목록 조회 API를 만들어 주세요.
-// id, title, content, createdAt를 조회합니다.
-// todo: offset 방식의 페이지네이션 기능을 포함해 주세요.
 
-//쉬운 기능부터 구현하면서 차근차근
-
-// id, title, content, createdAt, updatedAt 필드를 가집니다.
-// => 라고 할때, DB에서 가져온 걸 절대 그대로 쓰면 안된다.
-// => DB의 형상을 무너뜨리는 행위임 => 클래스가 있어야 함
-// => db에서 읽어온 거 그대로 사용 XXXXXXX, fromEntity가 변환을 책임져줌
 function getFindOptionFrom(req) {
    // 최신순(recent)으로 정렬할 수 있습니다.
    // title, content에 포함된 단어로 검색할 수 있습니다.
@@ -42,7 +104,7 @@ function getFindOptionFrom(req) {
    return findOption;
 }
 
-router.post("/", validateArticleInfo, (req, res, next) => {
+articleRouter.post("/", validateArticleInfo, (req, res, next) => {
    // 상품 등록 (getOnlyEntity)
    // > title, content를 입력해 게시글을 등록합니다.
    const { title, content } = req.body;
@@ -67,8 +129,15 @@ router.post("/", validateArticleInfo, (req, res, next) => {
          next(err);
       });
 });
+// 게시글 목록 조회 API를 만들어 주세요.
+// id, title, content, createdAt를 조회합니다.
+// todo: offset 방식의 페이지네이션 기능을 포함해 주세요.
+// id, title, content, createdAt, updatedAt 필드를 가집니다.
 
-router.get("/:id", (req, res, next) => {
+// => 라고 할때, DB에서 가져온 걸 절대 그대로 쓰면 안된다.
+// => DB의 형상을 무너뜨리는 행위임 => 클래스가 있어야 함
+// => db에서 읽어온 거 그대로 사용 XXXXXXX, fromEntity가 변환을 책임져줌
+articleRouter.get("/:id", validateArticleInfo, (req, res, next) => {
    // 상품 상세 조회 (getOnlyEntity)
    //  id, title, content, createdAt를 조회합니다.
    const articleId = parseInt(req.params.id);
@@ -97,7 +166,7 @@ router.get("/:id", (req, res, next) => {
       });
 });
 
-router.patch("/:id", (req, res, next) => {
+articleRouter.patch("/:id", (req, res, next) => {
    // 상품 수정
    const articleId = parseInt(req.params.id);
    const updateData = req.body;
@@ -125,7 +194,7 @@ router.patch("/:id", (req, res, next) => {
       });
 });
 
-router.delete("/:id", (req, res, next) => {
+articleRouter.delete("/:id", (req, res, next) => {
    // 상품 삭제
    const articleId = parseInt(req.params.id);
    if (isNaN(articleId)) {
@@ -146,7 +215,7 @@ router.delete("/:id", (req, res, next) => {
          });
    });
 });
-router.get("/", async (req, res, next) => {
+articleRouter.get("/", async (req, res, next) => {
    try {
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 10;
@@ -176,9 +245,7 @@ router.get("/", async (req, res, next) => {
 //       this.content = content;
 //       this.createdAt = createdAt;
 //    }
-export default router;
-// 그냥 아는거 다줘. DB 읽기 // result는 entities
-
+export default articleRouter;
 // console.log(result);
 // res.json("뭔가 하는 중"); //일단 오는지 띄워보기
 // id에 4n이라고 나옴 => DB로부터 가져올때 쌩으로 가져오면 안 되겠구나 생각하기
@@ -197,6 +264,5 @@ export default router;
 //       })
 // );
 
-// 짤짤이로 실행해보고 고치고 조금씩 진행하기
 // 시딩코드 한 후 > curl localhost:포트/articles 하면 등록된 자료 다와야함
 // 그러면 articles 다 가져오는 로직을 짜야겠지? >

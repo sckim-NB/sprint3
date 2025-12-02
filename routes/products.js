@@ -2,19 +2,82 @@ import express from "express";
 import { prisma } from "../prisma/prisma.js";
 import { validateProductInfo } from "../middlewares/validator.js";
 import { BadRequestError, NotFoundError } from "../utils/CustomError.js";
-
-const router = express.Router();
-
-///workspaces/sprint3/prisma/prisma.js
-// Product get
-// id, name, price, createdAt을 조회한다.
-// offset 방식의 페이지네이션 기능 포함( 페이지 별로 나눠서)
-// 최신순으로 정렬
-// // name, description에 포함된 단어로 검색할 수 있다.
-// > id, name, description, price, tags, createdAt, updatedAt필드를 가집니다.
-// 	> 필요한 필드가 있다면 자유롭게 추가해 주세요.
-
+import { ProductComment } from "./comments.js";
+import { Router } from "express";
 //쉬운 기능부터 구현하면서 차근차근
+const productRouter = Router();
+const productCommentRouter = new Router({ mergeParams: true });
+///workspaces/sprint3/prisma/prisma.js
+
+//< 댓글 >
+//   - 댓글 등록 API를 만들어 주세요.
+// /products/:id/comments/ POST
+// /products/:id/comments/ POST
+// 	     > content를 입력하여 댓글을 등록합니다.
+// 	     > 중고마켓, 자유게시판 댓글 등록 API를 따로 만들어 주세요.
+productCommentRouter.post("/", async (req, res) => {
+   const { content } = req.body;
+
+   const created = await prisma.product_comment.create({
+      data: {
+         content,
+         product_id: req.params.productId,
+      },
+   });
+   const productComment = ProductComment.fromEntity(created);
+   res.json(productComment);
+});
+
+//   - 댓글 수정 API를 만들어 주세요.
+// /products/:productid/comments/:commnetId PATCH
+// /products/:productid/comments/:commnetId PATCH
+// 	     > PATCH 메서드를 사용해 주세요.
+productCommentRouter.patch("/:commentId", async (req, res) => {
+   const { content } = req.body;
+
+   const updated = await prisma.product_comment.update({
+      where: {
+         id: req.params.commentId,
+      },
+      data: {
+         content,
+         product_id: req.params.productId,
+      },
+   });
+   const productComment = ProductComment.fromEntity(updated);
+   res.json(productComment);
+});
+
+//   - 댓글 삭제 API를 만들어 주세요.
+// /products/:productid/comments/:commnetId DELETE
+// /products/:productid/comments/:commnetId DELETE
+productCommentRouter.delete("/:commentId", (req, res) =>
+   prisma.product_comment
+      .delete({
+         where: {
+            id: req.params.commentId,
+         },
+      })
+      .then(ProductComment.fromEntity)
+      .then((comment) => res.json(comment))
+);
+//   - 댓글 목록 조회 API를 만들어 주세요.
+// /products/:id/comments/ 형식
+// /products/:id/comments/ 형식
+// 	     > id, content, createdAt 를 조회합니다.
+// 	     > cursor 방식의 페이지네이션 기능을 포함해 주세요.
+// 	     > 중고마켓, 자유게시판 댓글 목록 조회 API를 따로 만들어 주세요.
+productCommentRouter.get("/", async (req, res) => {
+   const entities = await prisma.product_comment.findMany({
+      where: {
+         product_id: req.params.productId,
+      },
+   });
+   const productComments = entities.map(ProductComment.fromEntity);
+   res.json(productComments);
+});
+productRouter.use("/:productId/comments", productCommentRouter);
+
 class Product {
    constructor(id, name, description, price, tags, createdAt, updateAt) {
       this.id = id;
@@ -55,7 +118,7 @@ function getFindOption(req) {
    }
    return findOption;
 }
-router.post("/", validateProductInfo, (req, res, next) => {
+productRouter.post("/", validateProductInfo, (req, res, next) => {
    // 상품 등록 (getOnlyEntity)
    // name, description, price, tags를 입력하여 상품을 등록합니다.
    const { name, description, price, tags } = req.body;
@@ -86,11 +149,18 @@ router.post("/", validateProductInfo, (req, res, next) => {
       });
 });
 
-router.get("/:id", (req, res, next) => {
+// id, name, price, createdAt을 조회한다.
+// offset 방식의 페이지네이션 기능 포함( 페이지 별로 나눠서)
+// 최신순으로 정렬
+// // name, description에 포함된 단어로 검색할 수 있다.
+// > id, name, description, price, tags, createdAt, updatedAt필드를 가집니다.
+// 	> 필요한 필드가 있다면 자유롭게 추가해 주세요.
+productRouter.get("/:id", validateProductInfo, (req, res, next) => {
    // 상품 상세 조회 (getOnlyEntity)
    // > id, name, description, price, tags, createdAt를 조회합니다.
    const productId = parseInt(req.params.id);
    if (isNaN(productId)) {
+      // id에 bigint가 안 올때 검증
       throw new BadRequestError("유효하지 않은 상품 ID 입니다.");
    }
    Promise.resolve(productId)
@@ -101,6 +171,7 @@ router.get("/:id", (req, res, next) => {
       })
       .then((onlyEntities) => {
          if (!onlyEntities) {
+            // DB에 등록된 상품 ID가 아닐 때 검증
             throw new NotFoundError("등록되지 않은 상품입니다.");
          }
          return Product.getOnlyEntity(onlyEntities);
@@ -114,13 +185,14 @@ router.get("/:id", (req, res, next) => {
       });
 });
 
-router.patch("/:id", (req, res, next) => {
+productRouter.patch("/:id", (req, res, next) => {
    // 상품 수정
    // > PATCH 메서드를 사용해 주세요.
    const productId = parseInt(req.params.id);
 
    const updateData = req.body;
    if (isNaN(productId)) {
+      // id에 bigint가 안 올때 검증
       throw new BadRequestError("유효하지 않은 상품 ID 입니다.");
    }
    Promise.resolve(productId)
@@ -136,17 +208,19 @@ router.patch("/:id", (req, res, next) => {
       })
       .catch((err) => {
          if (err.code === "P2025") {
-            return res.status(404).json({ message: "등록된 상품이 없습니다." });
+            // DB에 등록된 상품 ID가 아닐 때 검증
+            return res.status(404).json({ message: "등록된 상품이 아닙니다." });
          }
          console.error(err);
          next(err);
       });
 });
 
-router.delete("/:id", (req, res, next) => {
+productRouter.delete("/:id", (req, res, next) => {
    // 상품 삭제
    const productId = parseInt(req.params.id);
    if (isNaN(productId)) {
+      // id에 bigint가 안 올때 검증
       throw new BadRequestError("유효하지 않은 상품 ID 입니다.");
    }
    Promise.resolve(productId).then((id) => {
@@ -159,12 +233,14 @@ router.delete("/:id", (req, res, next) => {
             console.log("Successful Deletion of Product");
          })
          .catch((err) => {
+            // DB에 등록된 상품 ID가 아닐 때 검증
+            console.log("등록된 상품이 아닙니다.");
             console.error(err);
             next(err);
          });
    });
 });
-router.get("/", async (req, res, next) => {
+productRouter.get("/", async (req, res, next) => {
    try {
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 3;
@@ -189,7 +265,7 @@ router.get("/", async (req, res, next) => {
    }
 });
 
-export default router;
+export default productRouter;
 
 //상품 조회
 // Promise.resolve(getFindOption(req))
