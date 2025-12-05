@@ -10,10 +10,13 @@ import {
 } from "../utils/cursor-pagination.js";
 import { ProductComment } from "./comments.js";
 import { Router } from "express";
+import productImageRouter from "./product-image.route.js";
 //쉬운 기능부터 구현하면서 차근차근
-const productRouter = Router();
+
+const productRouter = new Router();
 const productCommentRouter = new Router({ mergeParams: true });
 ///workspaces/sprint3/prisma/prisma.js
+productRouter.use("/:productId/image", productImageRouter);
 
 //< 댓글 >
 //   - 댓글 등록 API를 만들어 주세요.
