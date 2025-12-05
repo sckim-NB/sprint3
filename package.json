@@ -3,6 +3,7 @@
    "dependencies": {
       "@prisma/adapter-pg": "^7.0.0",
       "@prisma/client": "^7.0.1",
+      "cors": "^2.8.5",
       "dotenv": "^17.2.3",
       "express": "^5.1.0",
       "multer": "^2.0.2",
@@ -18,10 +19,8 @@
    "version": "1.0.0",
    "main": "index.js",
    "scripts": {
-      "test": "echo \"Error: no test specified\" && exit 1",
-      "prisma": {
-         "seed": "node prisma/seed.js"
-      }
+      "start": "node app.js",
+      "build": "npm install && npx prisma db push && npx prisma generate"
    },
    "repository": {
       "type": "git",

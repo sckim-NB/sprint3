@@ -1,6 +1,7 @@
 // ★ app.js (After - 모듈화)
 import express from "express";
 // 라우터 import
+import cors from "cors";
 import productRouter from "./routes/products.js"; //CJS로 표현됨 users 파일로 가서, export default router
 // MJS로 변경하면 default가 하나라면 import usersRouter from "./routes/users";
 import articleRouter from "./routes/articles.js";
@@ -11,6 +12,7 @@ import productImageRouter from "./routes/product-image.route.js";
 dotenv.config(); //경로 빼면 그냥 .env 읽는다.
 
 const app = express();
+app.use(cors());
 const apiPort = process.env.API_PORT;
 // 무조건 세팅하기
 app.set("json replacer", (key, value) => {
