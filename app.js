@@ -5,15 +5,25 @@ import cors from "cors";
 import productRouter from "./routes/products.js"; //CJS로 표현됨 users 파일로 가서, export default router
 // MJS로 변경하면 default가 하나라면 import usersRouter from "./routes/users";
 import articleRouter from "./routes/articles.js";
-import dotenv from "dotenv"; //env 읽어오기
+// import dotenv from "dotenv"; //env 읽어오기
 import productImageRouter from "./routes/product-image.route.js";
 ///workspaces/sprint3/routes/product-image.route.js
 
-dotenv.config(); //경로 빼면 그냥 .env 읽는다.
+//dotenv.config(); //경로 빼면 그냥 .env 읽는다.
 
 const app = express();
 app.use(cors());
-const apiPort = process.env.API_PORT;
+//const apiPort = process.env.API_PORT;
+const port = process.env.PORT || process.env.API_PORT;
+if (!port) {
+   console.error("❌ ERROR: Server port is not defined. Please set the PORT environment variable.");
+   // 안전을 위해 기본 포트를 지정합니다.
+   const defaultPort = 9700;
+   console.log(`Setting default port to ${defaultPort}`);
+   app.set("port", defaultPort);
+} else {
+   app.set("port", port);
+}
 // 무조건 세팅하기
 app.set("json replacer", (key, value) => {
    if (typeof value === "bigint") {
@@ -45,6 +55,6 @@ app.get("/", (req, res) => {
 
 //console.log(apiPort);
 //env("API_PORT");  //.env에 있음 위에 임포트때 읽어와서 포트 등록된다
-app.listen(apiPort, () => {
-   console.log(`Server running on port ${apiPort}`);
+app.listen(app.get("port"), () => {
+   console.log(`Server running on port ${app.get("port")}`);
 });
