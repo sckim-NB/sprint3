@@ -1,6 +1,6 @@
 # 🛒 Market & Board API Service
 
-PostgreSQL과 Express를 기반으로 구축된 중고마켓 및 자유게시판 통합 백엔드 서비스입니다. 데이터 모델 간의 관계와 효율적인 페이지네이션(Offset/Cursor)을 고려하여 설계되었습니다.
+PostgreSQL과 Express를 기반으로 구축된 중고마켓 및 자유게시판 통합 백엔드 서비스입니다. 데이터 모델 간의 관계와 효율적인 Cursor pagination을 고려하여 설계되었습니다.
 
 ---
 
