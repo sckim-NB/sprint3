@@ -62,10 +62,12 @@ PostgreSQL과 Express를 기반으로 구축된 중고마켓 및 자유게시판
 ```env
 DATABASE_URL="postgresql://USERNAME:PASSWORD@HOST:PORT/DATABASE"
 PORT=3000
+```
 
 ### 2. 패키지 설치 및 실행 (Bash)
 터미널에서 아래 명령어를 순서대로 입력하세요.
-
+bash 
+```
 # 1. 의존성 패키지 설치
 $ npm install
 
@@ -74,6 +76,7 @@ $ npm run seed
 
 # 3. 서버 실행
 $ npm start
+```
 
 ## 🌐 배포 (Deployment)
 본 프로젝트는 Render.com을 통해 배포되었습니다.
